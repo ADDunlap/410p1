@@ -292,7 +292,16 @@ public class GradeBookShell {
 
     @Command
     public void addCategory(String name, float weight){
+        try{
+            db.createStatement();
 
+            String query = "INSERT INTO category (class_id,name,weight) VALUES (?,?,?);";
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,currentCourseNum);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     @Command
