@@ -5,6 +5,7 @@ import com.budhash.cliche.ShellFactory;
 
 import java.io.IOException;
 import java.sql.*;
+import java.util.Formatter;
 
 public class GradeBookShell {
 
@@ -17,7 +18,6 @@ public class GradeBookShell {
     private int currentSection;
     private String currentDescription;
     private String currentMeetTimes;
-
 
     public GradeBookShell(Connection cxn) {
         db = cxn;
@@ -321,12 +321,70 @@ public class GradeBookShell {
 
     @Command
     public void showStudents(){
+        try {
+            db.createStatement();
+            String showStudentsQuery = "SELECT student_name, username FROM student " +
+                                       "JOIN enrollment e on student.student_id = e.student_id " +
+                                       "WHERE class_id = ?;";
 
+            PreparedStatement stmt = db.prepareStatement(showStudentsQuery);
+            stmt.setInt(1, currentClassId);
+
+            ResultSet rs = stmt.executeQuery();
+            StringBuilder sb = new StringBuilder();
+            Formatter f = new Formatter(sb);
+
+            System.out.println("=============================================\n" +
+                               "              Enrolled Students\n" +
+                               "=============================================");
+
+            while(rs.next()) {
+                String studentName = rs.getString(1);
+                String username = rs.getString(2);
+                f.format("%-25s %-15s\n", studentName, username);
+            }
+
+            System.out.println(sb);
+        }
+        catch(SQLException sqlEx) {
+            sqlEx.printStackTrace();
+        }
     }
 
     @Command
     public void showStudents(String str){
+        try {
+            db.createStatement();
+            String showStudentsQuery = "SELECT student_name, username, student.student_id FROM student " +
+                                       "JOIN enrollment e on student.student_id = e.student_id " +
+                                       "WHERE class_id = ? " +
+                                       "AND student_name ILIKE '%' || ? || '%';";
 
+            PreparedStatement stmt = db.prepareStatement(showStudentsQuery);
+            stmt.setInt(1, currentClassId);
+            stmt.setString(2, str);
+
+            ResultSet rs = stmt.executeQuery();
+            StringBuilder sb = new StringBuilder();
+            Formatter f = new Formatter(sb);
+
+            System.out.println("=============================================\n" +
+                               "              Enrolled Students\n" +
+                               "=============================================\n" +
+                               "ALL NAMES CONTAINING: " + str +
+                               "\n--------------------------------------------");
+
+            while(rs.next()) {
+                String studentName = rs.getString(1);
+                String username = rs.getString(2);
+                f.format("%-25s %-15s\n", studentName, username);
+            }
+
+            System.out.println(sb);
+        }
+        catch(SQLException sqlEx) {
+            sqlEx.printStackTrace();
+        }
     }
 
     @Command
