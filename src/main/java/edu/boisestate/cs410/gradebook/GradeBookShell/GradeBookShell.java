@@ -25,7 +25,7 @@ public class GradeBookShell {
 
     public static void main(String[] args) throws IOException, SQLException {
         String dbUrl = args[0];
-        try (Connection cxn = DriverManager.getConnection("jdbc: " + dbUrl)) {
+        try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
             ShellFactory.createConsoleShell("charity", "", shell)
                     .commandLoop();
@@ -33,7 +33,7 @@ public class GradeBookShell {
     }
 
     @Command
-    public void new_class(String courseNum, String term, int year, int section, String class_description, String meetTimes)
+    public void newClass(String courseNum, String term, int year, int section, String class_description, String meetTimes)
     {
         try {
             db.createStatement();
@@ -58,7 +58,7 @@ public class GradeBookShell {
     }
 
     @Command
-    public void select_class(String courseNum){
+    public void selectClass(String courseNum){
         try {
             db.createStatement();
 
@@ -94,7 +94,39 @@ public class GradeBookShell {
 
     @Command
     public void select_class(String courseNum, String year, String term){
+        try {
+            db.createStatement();
 
+            String getNumCourses = "SELECT COUNT(class_id) FROM class " +
+                    "WHERE course_number = ?" +
+                    "AND year = ?" +
+                    "AND term = ?;";
+            PreparedStatement countStmt = db.prepareStatement(getNumCourses);
+            countStmt.setString(1, courseNum);
+
+            ResultSet rs1 = countStmt.executeQuery();
+
+            if(rs1.next()) {
+                int numCourses = rs1.getInt(1);
+                if (numCourses > 1) {
+                    System.out.println("Error: Multiple courses with course number: " + courseNum);
+                    return;
+                }
+            }
+
+            String selectStatement = "SELECT class_id FROM class " +
+                    "WHERE course_number = ?;";
+
+            PreparedStatement stmt = db.prepareStatement(selectStatement);
+            stmt.setString(1, courseNum);
+
+            ResultSet rs = stmt.executeQuery();
+
+
+        }
+        catch (SQLException sqlEx) {
+            sqlEx.printStackTrace();
+        }
     }
 
     @Command
