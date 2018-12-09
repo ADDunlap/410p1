@@ -24,10 +24,11 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        String dbUrl = args[0];
+        String dbUrl = "postgresql://localhost:31094/final_proj_db?user=tonyvonwolfe&password=RedMazdaMiata1995";
+
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
-            ShellFactory.createConsoleShell("charity", "", shell)
+            ShellFactory.createConsoleShell("gradebook", "", shell)
                     .commandLoop();
         }
     }
@@ -64,6 +65,7 @@ public class GradeBookShell {
 
             String getNumCourses = "SELECT COUNT(class_id) FROM class " +
                                    "WHERE course_number = ?;";
+
             PreparedStatement countStmt = db.prepareStatement(getNumCourses);
             countStmt.setString(1, courseNum);
 
@@ -72,7 +74,7 @@ public class GradeBookShell {
             if(rs1.next()) {
                 int numCourses = rs1.getInt(1);
                 if (numCourses > 1) {
-                    System.out.println("Error: Multiple courses with course number: " + courseNum);
+                    System.out.println("ERROR: Multiple courses with course number: " + courseNum);
                     return;
                 }
             }
@@ -93,7 +95,7 @@ public class GradeBookShell {
     }
 
     @Command
-    public void select_class(String courseNum, String year, String term){
+    public void selectClass(String courseNum, String year, String term){
         try {
             db.createStatement();
 
@@ -130,47 +132,47 @@ public class GradeBookShell {
     }
 
     @Command
-    public void select_class(String courseNum, String year, String term, int section){
+    public void selectClass(String courseNum, String year, String term, int section){
 
     }
 
     @Command
-    public void show_class(){
+    public void showClass(){
 
     }
 
     @Command
-    public void show_categories(){
+    public void showCategories(){
 
     }
 
     @Command
-    public void add_category(String name, float weight){
+    public void addCategory(String name, float weight){
 
     }
 
     @Command
-    public void show_items(){
+    public void showItems(){
 
     }
 
     @Command
-    public void add_item(String itemName, String categoryName, String description, float points) {
+    public void addItem(String itemName, String categoryName, String description, float points) {
 
     }
 
     @Command
-    public void add_student(String username, int studentID, String name) {
+    public void addStudent(String username, int studentID, String name) {
 
     }
 
     @Command
-    public void show_students(){
+    public void showStudents(){
 
     }
 
     @Command
-    public void show_students(String str){
+    public void showStudents(String str){
 
     }
 
@@ -180,7 +182,7 @@ public class GradeBookShell {
     }
 
     @Command
-    public void student_grades(String userName) {
+    public void studentGrades(String userName) {
 
     }
 
