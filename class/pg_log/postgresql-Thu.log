@@ -1,0 +1,50 @@
+ERROR:  syntax error at or near "dt" at character 1
+STATEMENT:  dt
+	NSERT INTO class (class_id,course_number,year,term,section,meeting_times) values (1,101,2018,'Spring',001,'1:45');
+ERROR:  cannot drop table student because other objects depend on it
+DETAIL:  constraint grade_student_id_fkey on table grade depends on table student
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+STATEMENT:  drop table student
+ERROR:  cannot drop table class because other objects depend on it
+DETAIL:  constraint category_class_id_fkey on table category depends on table class
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+STATEMENT:  drop table class
+ERROR:  cannot drop constraint class_pkey on table class because other objects depend on it
+DETAIL:  constraint category_class_id_fkey on table category depends on index class_pkey
+	constraint item_class_id_fkey on table item depends on index class_pkey
+	constraint enrollment_class_id_fkey on table enrollment depends on index class_pkey
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+STATEMENT:  ALTER TABLE public.class DROP CONSTRAINT class_pkey
+ERROR:  there is no unique constraint matching given keys for referenced table "class"
+STATEMENT:  CREATE TABLE category (
+	    category_id SERIAL PRIMARY KEY,
+	    class_id INTEGER NOT NULL REFERENCES class (class_id),
+	    name VARCHAR(30) NOT NULL,
+	    weight FLOAT NOT NULL CHECK (weight > 0)
+	)
+ERROR:  there is no unique constraint matching given keys for referenced table "class"
+STATEMENT:  CREATE TABLE category (
+	    category_id SERIAL PRIMARY KEY,
+	    class_id INTEGER NOT NULL REFERENCES class (class_id),
+	    name VARCHAR(30) NOT NULL,
+	    weight FLOAT NOT NULL CHECK (weight > 0)
+	)
+ERROR:  there is no unique constraint matching given keys for referenced table "class"
+STATEMENT:  CREATE TABLE category (
+	    category_id SERIAL PRIMARY KEY,
+	    class_id INTEGER NOT NULL REFERENCES class (class_id),
+	    name VARCHAR(30) NOT NULL,
+	    weight FLOAT NOT NULL CHECK (weight > 0)
+	)
+ERROR:  duplicate key value violates unique constraint "category_pkey"
+DETAIL:  Key (category_id)=(1) already exists.
+STATEMENT:  INSERT INTO category (category_id, class_id, name, weight) VALUES (1,6,'Quiz',25)
+ERROR:  duplicate key value violates unique constraint "category_pkey"
+DETAIL:  Key (category_id)=(1) already exists.
+STATEMENT:  INSERT INTO category (category_id, class_id, name, weight) VALUES (1,6,'Quiz',25)
+ERROR:  duplicate key value violates unique constraint "category_pkey"
+DETAIL:  Key (category_id)=(1) already exists.
+STATEMENT:  INSERT INTO category (category_id, class_id, name, weight) VALUES (1,6,'Exam',25)
+ERROR:  duplicate key value violates unique constraint "enrollment_student_id_class_id_key"
+DETAIL:  Key (student_id, class_id)=(1, 1) already exists.
+STATEMENT:  INSERT INTO enrollment (student_id, class_id) VALUES (1,1)

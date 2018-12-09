@@ -1,0 +1,9 @@
+ERROR:  duplicate key value violates unique constraint "enrollment_student_id_class_id_key"
+DETAIL:  Key (student_id, class_id)=(1, 1) already exists.
+STATEMENT:  INSERT INTO enrollment (student_id, class_id) VALUES (1,1)
+ERROR:  duplicate key value violates unique constraint "enrollment_student_id_class_id_key"
+DETAIL:  Key (student_id, class_id)=(1, 1) already exists.
+STATEMENT:  INSERT INTO enrollment (student_id, class_id) VALUES (1,1)
+ERROR:  duplicate key value violates unique constraint "enrollment_student_id_class_id_key"
+DETAIL:  Key (student_id, class_id)=(108, 4) already exists.
+STATEMENT:  INSERT INTO enrollment (student_id, class_id) VALUES (108,4)
