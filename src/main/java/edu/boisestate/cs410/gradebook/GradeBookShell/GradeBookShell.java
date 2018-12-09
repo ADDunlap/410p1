@@ -2,10 +2,14 @@ package edu.boisestate.cs410.gradebook.GradeBookShell;
 
 import com.budhash.cliche.Command;
 import com.budhash.cliche.ShellFactory;
+import org.postgresql.util.PSQLException;
 
+import javax.xml.transform.Result;
 import java.io.IOException;
 import java.sql.*;
 import java.util.Formatter;
+
+import static java.lang.Thread.sleep;
 
 public class GradeBookShell {
 
@@ -58,7 +62,7 @@ public class GradeBookShell {
             statement.setString(5, class_description);
             statement.setString(6, meetTimes);
 
-            ResultSet rs = statement.executeQuery();
+            statement.executeUpdate();
 
         }
         catch(SQLException sqlEx) {
@@ -291,32 +295,105 @@ public class GradeBookShell {
     }
 
     @Command
-    public void addCategory(String name, float weight){
+    public void addCategory(String name, double weight){
         try{
             db.createStatement();
 
             String query = "INSERT INTO category (class_id,name,weight) VALUES (?,?,?);";
             PreparedStatement stmt = db.prepareStatement(query);
-            stmt.setInt(1,currentCourseNum);
+            stmt.setInt(1,currentClassId);
+            stmt.setString(2,name);
+            stmt.setDouble(3,weight);
+
+            stmt.executeUpdate();
 
         } catch (SQLException e) {
-            e.printStackTrace();
+
         }
     }
 
     @Command
     public void showItems(){
+        try {
+            db.createStatement();
 
+            String query = "SELECT item.name, point_value, category.name,category.category_id FROM item " +
+                           "JOIN category ON item.category_id = category.category_id " +
+                           "WHERE item.class_id = ? " +
+                           "ORDER BY category.name";
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,currentClassId);
+
+            ResultSet rs = stmt.executeQuery();
+            int currentCat;
+            int prevCat = -1;
+            rs.next();
+            while(rs.next()){
+                String itemName = rs.getString(1);
+                double value = rs.getDouble(2);
+                String catName = rs.getString(3);
+                int catID = rs.getInt(4);
+                currentCat = catID;
+                if(currentCat != prevCat) {
+                    System.out.println();
+                    System.out.println("Category Name: " + catName + "\n*******************");
+                    prevCat = currentCat;
+                }
+                System.out.println("Item Name: " + itemName + ", Point Value: " + value);
+            }
+            System.out.println();
+        } catch (SQLException e) {
+
+        }
     }
 
     @Command
-    public void addItem(String itemName, String categoryName, String description, float points) {
+    public void addItem(String itemName, String categoryName, String description, double points) {
+        try {
+            db.createStatement();
 
+            String query = "INSERT INTO item (class_id, category_id, name, description, point_value) VALUES (?," +
+                    "    (" +
+                    "          SELECT category_id FROM category" +
+                    "          WHERE category.class_id = ?" +
+                    "          AND category.name = ?" +
+                    "    ), ?, ?, ?);";
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,currentClassId);
+            stmt.setInt(2,currentClassId);
+            stmt.setString(3,categoryName);
+            stmt.setString(4,itemName);
+            stmt.setString(5,description);
+            stmt.setDouble(6,points);
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+
+        }
     }
 
     @Command
     public void addStudent(String username, int studentID, String name) {
+        try {
+            db.createStatement();
 
+            String query1 = "INSERT INTO student(student_id,student_name,username) VALUES (?,?,?);";
+            PreparedStatement stmt1 = db.prepareStatement(query1);
+            stmt1.setInt(1,studentID);
+            stmt1.setString(2,name);
+            stmt1.setString(3,username);
+            stmt1.executeUpdate();
+
+
+            String query2 = "INSERT INTO enrollment(student_id,class_id) VALUES (?,?);";
+            PreparedStatement stmt2 = db.prepareStatement(query2);
+            stmt2.setInt(1,studentID);
+            stmt2.setInt(2,currentClassId);
+            stmt2.executeUpdate();
+
+        }catch (Exception e){
+        }
     }
 
     @Command
@@ -388,7 +465,50 @@ public class GradeBookShell {
     }
 
     @Command
-    public void grade(String itemName, String userName, double grade){
+    public void grade(String itemName, String userName, double grade) throws SQLException {
+    try {
+        db.createStatement();
+        String query = "INSERT INTO grade (student_id, item_id, assigned_grade) " +
+                "VALUES (" +
+                "           (SELECT student.student_id FROM student" +
+                "            JOIN enrollment e on student.student_id = e.student_id" +
+                "            WHERE username = ?" +
+                "            AND class_id = ?" +
+                "           ), " +
+                "           (SELECT item_id FROM item" +
+                "            JOIN class ON item.class_id = class.class_id" +
+                "            WHERE item.class_id = ?" +
+                "            AND item.name = ?" +
+                "           ), " +
+                "           ?)";
+        PreparedStatement stmt = db.prepareStatement(query);
+        stmt.setString(1,userName);
+        stmt.setInt(2,currentClassId);
+        stmt.setInt(3,currentClassId);
+        stmt.setString(4,itemName);
+        stmt.setDouble(5,grade);
+
+        stmt.executeUpdate();
+
+    } catch (SQLException e) {
+        db.createStatement();
+        String query = "UPDATE grade SET assigned_grade = ? WHERE student_id = (SELECT student.student_id FROM student" +
+                "                           JOIN enrollment e on student.student_id = e.student_id " +
+                "                           WHERE username = ?" +
+                "                           AND class_id = ?" +
+                "                           ) AND item_id = (SELECT item_id FROM item " +
+                "                            JOIN class ON item.class_id = class.class_id " +
+                "                            WHERE item.class_id = ?" +
+                "                            AND item.name = ?" +
+                "                           )";
+        PreparedStatement stmt = db.prepareStatement(query);
+        stmt.setDouble(1,grade);
+        stmt.setString(2,userName);
+        stmt.setInt(3,currentClassId);
+        stmt.setInt(4,currentClassId);
+        stmt.setString(5,itemName);
+        stmt.executeUpdate();
+    }
 
     }
 
