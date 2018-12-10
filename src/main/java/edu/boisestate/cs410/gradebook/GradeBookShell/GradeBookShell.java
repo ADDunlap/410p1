@@ -36,7 +36,7 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        String dbUrl = "postgresql://localhost:33290/class?user=alexdunlap&password=password";
+        String dbUrl = "postgresql://localhost:31094/class?user=tonyvonwolfep&password=RedMazdaMiata1995";
 
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
@@ -514,7 +514,49 @@ public class GradeBookShell {
 
     @Command
     public void studentGrades(String userName) {
+        try {
+            db.createStatement();
 
+            String query = "SELECT item.name, category.category_id, category.name, item.point_value, grade.assigned_grade " +
+                    "FROM item " +
+                    "JOIN category ON item.category_id = category.category_id " +
+                    "JOIN grade ON item.item_id = grade.item_id " +
+                    "WHERE grade.student_id = (SELECT student_id FROM student WHERE student.username = ?)" +
+                    "ORDER BY item.category_id;";
+
+            PreparedStatement statement = db.prepareStatement(query);
+
+            statement.setString(1, userName);
+
+            ResultSet rs = statement.executeQuery();
+
+            StringBuilder sb = new StringBuilder();
+
+            Formatter f = new Formatter(sb);
+
+            System.out.println("ASSIGNED GRADES FOR STUDENT: " + userName +
+                    "\n=====================================================");
+
+            int currCategory;
+            int prevCategory = -1;
+
+            while(rs.next()) {
+                currCategory = rs.getInt(2);
+                if(currCategory != prevCategory) {
+                    sb.append("\n");
+                    sb.append(rs.getString(3) + "\n*********************************\n");
+                    prevCategory = currCategory;
+                }
+
+                f.format("%-20s %-3.2f/%-3.2f\n", rs.getString(1), rs.getDouble(5), rs.getDouble(4));
+            }
+
+            System.out.println(sb);
+
+        }
+        catch (SQLException sqlEx) {
+            sqlEx.printStackTrace();
+        }
     }
 
     @Command
