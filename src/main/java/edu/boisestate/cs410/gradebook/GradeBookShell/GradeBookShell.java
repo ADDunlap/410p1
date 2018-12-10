@@ -36,7 +36,7 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        String dbUrl = "postgresql://localhost:31094/final_proj_db?user=tonyvonwolfe&password=RedMazdaMiata1995";
+        String dbUrl = "postgresql://localhost:33290/class?user=alexdunlap&password=password";
 
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
@@ -519,7 +519,50 @@ public class GradeBookShell {
 
     @Command
     public void gradebook(){
+        try {
+            db.createStatement();
+            String query = "SELECT student_name,student_id,username,item.name,item_id " +
+                    "FROM enrollment " +
+                    "JOIN student USING (student_id) " +
+                    "JOIN item USING (class_id) " +
+                    "WHERE class_id = ?;";
 
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,currentClassId);
+            ResultSet rs = stmt.executeQuery();
+
+            String oldName = "NONE";
+            String curName;
+            while(rs.next()){
+                String sName = rs.getString(1);
+                int sID = rs.getInt(2);
+                String sUserName = rs.getString(3);
+                String itemName = rs.getString(4);
+                int iID = rs.getInt(5);
+                db.createStatement();
+                String query1 = "SELECT assigned_grade,student_id,item_id " +
+                        "FROM grade " +
+                        "WHERE student_id = ?;";
+                PreparedStatement stmt1 = db.prepareStatement(query1);
+                stmt1.setInt(1,sID);
+                ResultSet rs1 = stmt1.executeQuery();
+                curName = sName;
+                if(!curName.equals(oldName)){
+                    System.out.println("Student Name: " + sName);
+                    oldName = curName;
+                    while(rs1.next()){
+                        double grade = rs1.getDouble(1);
+                        int unused = rs1.getInt(2);
+                        int ID = rs1.getInt(3);
+                        System.out.println("Item ID: " + ID + " Grade: " + grade);
+                    }
+                }
+
+            }
+
+        } catch (SQLException e) {
+
+        }
     }
 
 }
