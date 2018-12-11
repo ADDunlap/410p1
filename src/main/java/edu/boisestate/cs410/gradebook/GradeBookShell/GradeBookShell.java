@@ -560,51 +560,122 @@ public class GradeBookShell {
     }
 
     @Command
-    public void gradebook(){
+    public void gradebook() {
+
         try {
             db.createStatement();
-            String query = "SELECT student_name,student_id,username,item.name,item_id " +
+            String query = "SELECT student_id,student_name " +
                     "FROM enrollment " +
                     "JOIN student USING (student_id) " +
-                    "JOIN item USING (class_id) " +
                     "WHERE class_id = ?;";
 
             PreparedStatement stmt = db.prepareStatement(query);
-            stmt.setInt(1,currentClassId);
+            stmt.setInt(1, currentClassId);
             ResultSet rs = stmt.executeQuery();
 
             String oldName = "NONE";
             String curName;
-            while(rs.next()){
-                String sName = rs.getString(1);
-                int sID = rs.getInt(2);
-                String sUserName = rs.getString(3);
-                String itemName = rs.getString(4);
-                int iID = rs.getInt(5);
+            double curGrade = -1;
+            double totalPoints = 0;
+            double curWeight = 0;
+            while (rs.next()) {
+                String sName = rs.getString(2);
+                int sID = rs.getInt(1);
                 db.createStatement();
-                String query1 = "SELECT assigned_grade,student_id,item_id " +
+                String query1 = "SELECT assigned_grade,student_id,item_id,item.name,category.weight,category.name " +
                         "FROM grade " +
-                        "WHERE student_id = ?;";
+                        "JOIN item USING (item_id)" +
+                        "JOIN category USING (class_id) " +
+                        "WHERE student_id = ? AND class_id = ?;";
                 PreparedStatement stmt1 = db.prepareStatement(query1);
-                stmt1.setInt(1,sID);
+                stmt1.setInt(1, sID);
+                stmt1.setInt(2, currentClassId);
                 ResultSet rs1 = stmt1.executeQuery();
                 curName = sName;
-                if(!curName.equals(oldName)){
+                String curCat;
+                String oldCat = "NA";
+                if (!curName.equals(oldName)) {
+                    System.out.println("*********************************************");
                     System.out.println("Student Name: " + sName);
                     oldName = curName;
-                    while(rs1.next()){
-                        double grade = rs1.getDouble(1);
-                        int unused = rs1.getInt(2);
-                        int ID = rs1.getInt(3);
-                        System.out.println("Item ID: " + ID + " Grade: " + grade);
-                    }
+                    System.out.println("Grade for Attempted Work: " + attemptCalc(sID));
+                    System.out.println("*********************************************\n");
+//                    while(rs1.next()){
+//                        double grade = rs1.getDouble(1);
+//                        int ID = rs1.getInt(3);
+//                        String itemName = rs1.getString(4);
+//                        double weight = rs1.getDouble(5);
+//                        String catName = rs1.getString(6);
+
+//                        System.out.println(itemName + " Grade: " + grade);
+//                        curCat = catName;
+//                        curWeight = weight/100;
+//                        curGrade = grade;
+//                        double totalCalc = ((100 - curGrade) + curGrade);
+//                        totalPoints += (totalCalc * curWeight);
                 }
 
+//                    if(curGrade != -1){
+//                        db.createStatement();
+//                        String query2 = "SELECT SUM(assigned_grade),student_id,Count(item_id),COUNT(item.name) " +
+//                                "FROM grade " +
+//                                "JOIN item USING (item_id) " +
+//                                "WHERE student_id = ? " +
+//                                "GROUP BY student_id;";
+//                        PreparedStatement stmt2 = db.prepareStatement(query2);
+//
+//                        stmt2.setInt(1,sID);
+//                        ResultSet rs2 = stmt2.executeQuery();
+//                        rs2.next();
+//                        double attempted = rs2.getDouble(1);
+//                        System.out.println("Total Attempted Grade: " + (attempted * curWeight) + " out of " + totalPoints*curWeight);
+//                        System.out.println("**************************");
+//                        totalPoints = 0;
             }
 
+            //               }
         } catch (SQLException e) {
 
         }
     }
+    private double attemptCalc(int sID){
+        double total = 0;
+        try {
+            db.createStatement();
+            String query = "SELECT category.name,category.weight, Count(item_id),Count(category.class_id),SUM(assigned_grade),COUNT(student_id) " +
+                    "FROM category " +
+                    "JOIN item i on category.category_id = i.category_id " +
+                    "JOIN grade USING (item_id) " +
+                    "WHERE category.class_id = ? AND student_id = ?" +
+                    "GROUP BY category.name,category.weight;";
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,currentClassId);
+            stmt.setInt(2,sID);
+            ResultSet rs = stmt.executeQuery();
 
+            while(rs.next()){
+                String catName = rs.getString(1);
+                double weight = rs.getDouble(2);
+                double sum = rs.getDouble(5);
+                int count = rs.getInt(3);
+                double partialTotal = (sum/(100*count))*100;
+                total += (partialTotal * (weight/100));
+                System.out.println("Total for " + catName + " = " + partialTotal);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return total;
+    }
+    private double totalCalc(int sID) {
+        double total = 0;
+        try {
+            db.createStatement();
+
+        } catch (SQLException e) {
+
+        }
+
+        return total;
+    }
 }
