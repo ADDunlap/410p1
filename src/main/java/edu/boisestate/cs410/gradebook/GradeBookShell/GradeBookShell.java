@@ -36,7 +36,7 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        String dbUrl = "postgresql://localhost:31094/class?user=tonyvonwolfep&password=RedMazdaMiata1995";
+        String dbUrl = args[0];
 
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
@@ -517,16 +517,18 @@ public class GradeBookShell {
         try {
             db.createStatement();
 
-            String query = "SELECT item.name, category.category_id, category.name, item.point_value, grade.assigned_grade " +
+            String query = "SELECT item.name, category.category_id, category.name, COALESCE((grade.assigned_grade / item.point_value) * 100, 0) " +
                     "FROM item " +
                     "JOIN category ON item.category_id = category.category_id " +
-                    "JOIN grade ON item.item_id = grade.item_id " +
-                    "WHERE grade.student_id = (SELECT student_id FROM student WHERE student.username = ?)" +
-                    "ORDER BY item.category_id;";
+                    "LEFT JOIN grade ON item.item_id = grade.item_id " +
+                    "AND grade.student_id = (SELECT student_id FROM student WHERE student.username = ?)" +
+                    "WHERE item.class_id = ?" +
+                    "ORDER BY item.category_id ASC;";
 
             PreparedStatement statement = db.prepareStatement(query);
 
             statement.setString(1, userName);
+            statement.setInt(2, currentClassId);
 
             ResultSet rs = statement.executeQuery();
 
@@ -534,7 +536,7 @@ public class GradeBookShell {
 
             Formatter f = new Formatter(sb);
 
-            System.out.println("ASSIGNED GRADES FOR STUDENT: " + userName +
+            System.out.println("\nASSIGNED GRADES FOR STUDENT: " + userName +
                     "\n=====================================================");
 
             int currCategory;
@@ -543,16 +545,130 @@ public class GradeBookShell {
             while(rs.next()) {
                 currCategory = rs.getInt(2);
                 if(currCategory != prevCategory) {
+
+                    if(prevCategory != -1) {
+                        String catAttemptQuery = "SELECT SUM(COALESCE(assigned_grade, 0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100\n" +
+                                "FROM item\n" +
+                                "JOIN grade ON item.item_id = grade.item_id\n" +
+                                "JOIN category ON item.category_id = category.category_id\n" +
+                                "WHERE student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                                "AND item.class_id = ?" +
+                                "AND item.category_id = ?;";
+
+                        PreparedStatement stmt = db.prepareStatement(catAttemptQuery);
+                        stmt.setString(1, userName);
+                        stmt.setInt(2, currentClassId);
+                        stmt.setInt(3, currCategory - 1);
+
+                        ResultSet rs2 = stmt.executeQuery();
+
+                        String catTotalQuery = "SELECT SUM(COALESCE(assigned_grade, 0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100 AS overall_grade_percent\n" +
+                                "FROM item\n" +
+                                "LEFT JOIN grade ON item.item_id = grade.item_id\n" +
+                                "AND student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                                "JOIN category ON item.category_id = category.category_id\n" +
+                                "WHERE item.class_id = ? " +
+                                "AND item.category_id = ?;";
+
+                        PreparedStatement totalStmt =  db.prepareStatement(catTotalQuery);
+                        totalStmt.setString(1, userName);
+                        totalStmt.setInt(2, currentClassId);
+                        totalStmt.setInt(3, currCategory - 1);
+
+                        ResultSet rs3 = totalStmt.executeQuery();
+
+                        if (rs2.next() && rs3.next()) {
+                            sb.append("---------------------------------\n");
+                            f.format( "%-25s %3.2f%1s\n", "Attempted Grade:", rs2.getDouble(1), "%");
+                            f.format( "%-25s %3.2f%1s\n", "Overall Grade:", rs3.getDouble(1), "%");
+                        }
+                    }
+
                     sb.append("\n");
                     sb.append(rs.getString(3) + "\n*********************************\n");
                     prevCategory = currCategory;
                 }
 
-                f.format("%-20s %-3.2f/%-3.2f\n", rs.getString(1), rs.getDouble(5), rs.getDouble(4));
+                f.format("%-19s %3.2f/%3.2f%n", rs.getString(1), rs.getDouble(4), 100.0);
+
+                if(rs.isLast()) {
+                    String catAttemptQuery = "SELECT SUM(COALESCE(assigned_grade, 0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100\n" +
+                            "FROM item\n" +
+                            "JOIN grade ON item.item_id = grade.item_id\n" +
+                            "JOIN category ON item.category_id = category.category_id\n" +
+                            "WHERE student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                            "AND item.class_id = ?" +
+                            "AND item.category_id = ?;";
+
+                    PreparedStatement stmt = db.prepareStatement(catAttemptQuery);
+                    stmt.setString(1, userName);
+                    stmt.setInt(2, currentClassId);
+                    stmt.setInt(3, currCategory);
+
+                    ResultSet rs2 = stmt.executeQuery();
+
+                    String catTotalQuery = "SELECT SUM(COALESCE(assigned_grade, 0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100 AS overall_grade_percent\n" +
+                            "FROM item\n" +
+                            "LEFT JOIN grade ON item.item_id = grade.item_id\n" +
+                            "AND student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                            "JOIN category ON item.category_id = category.category_id\n" +
+                            "WHERE item.class_id = ? " +
+                            "AND item.category_id = ?;";
+
+                    PreparedStatement totalStmt = db.prepareStatement(catTotalQuery);
+                    totalStmt.setString(1, userName);
+                    totalStmt.setInt(2, currentClassId);
+                    totalStmt.setInt(3, currCategory);
+
+                    ResultSet rs3 = totalStmt.executeQuery();
+
+                    if (rs2.next() && rs3.next()) {
+                        sb.append("---------------------------------\n");
+                        f.format("%-25s %3.2f%1s\n", "Attempted Grade:", rs2.getDouble(1), "%");
+                        f.format("%-25s %3.2f%1s\n", "Overall Grade:", rs3.getDouble(1), "%");
+                    }
+                }
+            }
+
+            String classAttemptedGradeQuery = "SELECT (SUM((assigned_grade * (weight / 100))) / SUM(point_value * (weight / 100))) * 100 AS attempted_grade_percent\n" +
+                    "FROM grade\n" +
+                    "JOIN item ON grade.item_id = item.item_id\n" +
+                    "JOIN category ON item.category_id = category.category_id\n" +
+                    "WHERE student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                    "AND item.class_id = ?;";
+
+            PreparedStatement ps = db.prepareStatement(classAttemptedGradeQuery);
+
+            ps.setString(1, userName);
+            ps.setInt(2, currentClassId);
+
+            ResultSet attemptGradeResultSet = ps.executeQuery();
+
+            if (attemptGradeResultSet.next()){
+                sb.append("\n=================================\n");
+                f.format( "%-25s %3.2f\n","TOTAL ATTEMPTED GRADE:", attemptGradeResultSet.getDouble(1));
+            }
+
+            String classTotalGradeQuery = "SELECT SUM(COALESCE(assigned_grade, 0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100 AS overall_grade_percent\n" +
+                    "FROM item\n" +
+                    "LEFT JOIN grade ON item.item_id = grade.item_id\n" +
+                    "AND student_id = (SELECT student_id FROM student WHERE student.username = ?)\n" +
+                    "JOIN category ON item.category_id = category.category_id\n" +
+                    "WHERE item.class_id = ?;\n";
+
+            PreparedStatement ps2 = db.prepareStatement(classTotalGradeQuery);
+            ps2.setString(1, userName);
+            ps2.setInt(2, currentClassId);
+
+            ResultSet totalGradeResultSet = ps2.executeQuery();
+
+            if(totalGradeResultSet.next()) {
+
+                double val = totalGradeResultSet.getDouble(1);
+                f.format( "%-25s %3.2f\n","TOTAL OVERALL GRADE:", val);
             }
 
             System.out.println(sb);
-
         }
         catch (SQLException sqlEx) {
             sqlEx.printStackTrace();
