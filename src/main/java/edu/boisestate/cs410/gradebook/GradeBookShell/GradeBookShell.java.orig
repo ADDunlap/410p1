@@ -38,7 +38,11 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
+<<<<<<< HEAD
+        String dbUrl = "postgresql://localhost:31094/final_proj_db?user=tonyvonwolfe&password=RedMazdaMiata1995";
+=======
         String dbUrl = args[0];
+>>>>>>> f557bde29e7f09f43b34b2bdea4c488a6d34492c
 
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
