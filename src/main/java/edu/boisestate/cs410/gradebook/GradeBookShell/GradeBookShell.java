@@ -7,6 +7,7 @@ import org.postgresql.util.PSQLException;
 import javax.xml.transform.Result;
 import java.io.IOException;
 import java.sql.*;
+import java.text.DecimalFormat;
 import java.util.Formatter;
 
 import static java.lang.Thread.sleep;
@@ -22,6 +23,7 @@ public class GradeBookShell {
     private int currentSection;
     private String currentDescription;
     private String currentMeetTimes;
+    private DecimalFormat dc = new DecimalFormat("00.00");
 
     public GradeBookShell(Connection cxn) {
         db = cxn;
@@ -36,7 +38,7 @@ public class GradeBookShell {
     }
 
     public static void main(String[] args) throws IOException, SQLException {
-        String dbUrl = "postgresql://localhost:31094/class?user=tonyvonwolfep&password=RedMazdaMiata1995";
+        String dbUrl = "postgresql://localhost:31094/final_proj_db?user=tonyvonwolfe&password=RedMazdaMiata1995";
 
         try (Connection cxn = DriverManager.getConnection("jdbc:" + dbUrl)) {
             GradeBookShell shell = new GradeBookShell(cxn);
@@ -111,12 +113,14 @@ public class GradeBookShell {
             System.out.println("Selected " + courseNum);
         }
         catch (SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Input error please use the following format:");
+            System.out.println("select-class <Course Number>");
+            return;
         }
     }
 
     @Command
-    public void selectClass(String courseNum, int year, String term){
+    public void selectClass(String courseNum, String term, int year){
         try {
             db.createStatement();
 
@@ -164,12 +168,14 @@ public class GradeBookShell {
 
         }
         catch (SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Input error please use the following format:");
+            System.out.println("select-class <Course Number> <Year> <Term>");
+            return;
         }
     }
 
     @Command
-    public void selectClass(String courseNum, int year, String term, int section){
+    public void selectClass(String courseNum, String term, int year, int section){
         try {
             db.createStatement();
 
@@ -221,7 +227,9 @@ public class GradeBookShell {
 
         }
         catch (SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Input error please use the following format:");
+            System.out.println("select-class <Course Number> <Year> <Term> <Section>");
+            return;
         }
     }
 
@@ -257,7 +265,10 @@ public class GradeBookShell {
                     "\nMeeting Time = " + times);
         }
         else {
-            System.out.println("No active class selected.");
+            System.out.println("No active class selected. Please use one of the following commands to select a class");
+            System.out.println("select-class <Class Number>");
+            System.out.println("select-class <Class Number> <Year> <Term>");
+            System.out.println("select-class <Class Number> <Year> <Term> <Section>");
         }
     }
 
@@ -275,8 +286,8 @@ public class GradeBookShell {
 
                 ResultSet rs = stmt.executeQuery();
 
-                System.out.println("For class = " + currentCourseNum + " " + currentYear + " " +
-                        currentTerm + " " + currentSection + "\nCategories:\n");
+                System.out.println("For class " + currentCourseNum + " " + currentYear + " " +
+                        currentTerm + " " + currentSection + "\nCategories:");
                 while(rs.next()){
                     int catID = rs.getInt(1);
                     String name = rs.getString(2);
@@ -308,7 +319,7 @@ public class GradeBookShell {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
-
+            System.out.println("Error");
         }
     }
 
@@ -343,7 +354,7 @@ public class GradeBookShell {
             }
             System.out.println();
         } catch (SQLException e) {
-
+            System.out.println("Error");
         }
     }
 
@@ -369,7 +380,7 @@ public class GradeBookShell {
             stmt.executeUpdate();
 
         } catch (SQLException e) {
-
+            System.out.println("Error");
         }
     }
 
@@ -393,6 +404,7 @@ public class GradeBookShell {
             stmt2.executeUpdate();
 
         }catch (Exception e){
+            System.out.println("Error");
         }
     }
 
@@ -424,7 +436,7 @@ public class GradeBookShell {
             System.out.println(sb);
         }
         catch(SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Error");
         }
     }
 
@@ -435,11 +447,12 @@ public class GradeBookShell {
             String showStudentsQuery = "SELECT student_name, username, student.student_id FROM student " +
                                        "JOIN enrollment e on student.student_id = e.student_id " +
                                        "WHERE class_id = ? " +
-                                       "AND student_name ILIKE '%' || ? || '%';";
+                                       "AND student_name ILIKE '%' || ? || '%' OR username ILIKE '%' || ? || '%';";
 
             PreparedStatement stmt = db.prepareStatement(showStudentsQuery);
             stmt.setInt(1, currentClassId);
             stmt.setString(2, str);
+            stmt.setString(3,str);
 
             ResultSet rs = stmt.executeQuery();
             StringBuilder sb = new StringBuilder();
@@ -460,7 +473,7 @@ public class GradeBookShell {
             System.out.println(sb);
         }
         catch(SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Error");
         }
     }
 
@@ -555,7 +568,7 @@ public class GradeBookShell {
 
         }
         catch (SQLException sqlEx) {
-            sqlEx.printStackTrace();
+            System.out.println("Error");
         }
     }
 
@@ -564,7 +577,7 @@ public class GradeBookShell {
 
         try {
             db.createStatement();
-            String query = "SELECT student_id,student_name " +
+            String query = "SELECT student_id,student_name,username " +
                     "FROM enrollment " +
                     "JOIN student USING (student_id) " +
                     "WHERE class_id = ?;";
@@ -598,44 +611,13 @@ public class GradeBookShell {
                     System.out.println("*********************************************");
                     System.out.println("Student Name: " + sName);
                     oldName = curName;
-                    System.out.println("Grade for Attempted Work: " + attemptCalc(sID));
+                    System.out.println("Total grade: " + dc.format((totalCalc(sID))));
+                    System.out.println("Grade for Attempted Work(Based on category weight): " + dc.format(attemptCalc(sID)));
                     System.out.println("*********************************************\n");
-//                    while(rs1.next()){
-//                        double grade = rs1.getDouble(1);
-//                        int ID = rs1.getInt(3);
-//                        String itemName = rs1.getString(4);
-//                        double weight = rs1.getDouble(5);
-//                        String catName = rs1.getString(6);
-
-//                        System.out.println(itemName + " Grade: " + grade);
-//                        curCat = catName;
-//                        curWeight = weight/100;
-//                        curGrade = grade;
-//                        double totalCalc = ((100 - curGrade) + curGrade);
-//                        totalPoints += (totalCalc * curWeight);
                 }
-
-//                    if(curGrade != -1){
-//                        db.createStatement();
-//                        String query2 = "SELECT SUM(assigned_grade),student_id,Count(item_id),COUNT(item.name) " +
-//                                "FROM grade " +
-//                                "JOIN item USING (item_id) " +
-//                                "WHERE student_id = ? " +
-//                                "GROUP BY student_id;";
-//                        PreparedStatement stmt2 = db.prepareStatement(query2);
-//
-//                        stmt2.setInt(1,sID);
-//                        ResultSet rs2 = stmt2.executeQuery();
-//                        rs2.next();
-//                        double attempted = rs2.getDouble(1);
-//                        System.out.println("Total Attempted Grade: " + (attempted * curWeight) + " out of " + totalPoints*curWeight);
-//                        System.out.println("**************************");
-//                        totalPoints = 0;
             }
-
-            //               }
         } catch (SQLException e) {
-
+            System.out.println("Error");
         }
     }
     private double attemptCalc(int sID){
@@ -660,10 +642,10 @@ public class GradeBookShell {
                 int count = rs.getInt(3);
                 double partialTotal = (sum/(100*count))*100;
                 total += (partialTotal * (weight/100));
-                System.out.println("Total for " + catName + " = " + partialTotal);
+//                System.out.println("Total for " + catName + " = " + partialTotal);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Error");
         }
         return total;
     }
@@ -671,11 +653,24 @@ public class GradeBookShell {
         double total = 0;
         try {
             db.createStatement();
+            String query = "SELECT SUM(COALESCE(assigned_grade,0) * (weight / 100)) / SUM(point_value * (weight / 100)) * 100 " +
+                    "FROM item " +
+                    "LEFT JOIN grade ON item.item_id = grade.item_id " +
+                    "AND student_id = ? " +
+                    "JOIN category ON item.category_id = category.category_id " +
+                    "WHERE item.class_id = ?;";
+            PreparedStatement stmt = db.prepareStatement(query);
+            stmt.setInt(1,sID);
+            stmt.setInt(2,currentClassId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            rs.next();
+            total = rs.getDouble(1);
 
         } catch (SQLException e) {
-
+            System.out.println("Error");
         }
-
         return total;
     }
 }
